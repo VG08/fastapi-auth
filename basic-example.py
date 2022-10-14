@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Dict, Optional, Union
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from schemas import User
 
-fake_users_db = {
+fake_users_db: Dict[str, Dict[str, Union[str, bool]]] = {
     "johndoe": {
         "username": "johndoe",
         "full_name": "John Doe",
@@ -24,7 +25,7 @@ fake_users_db = {
 app = FastAPI()
 
 
-def fake_hash_password(password: str):
+def fake_hash_password(password: str) -> str:
     return "fakehashed" + password
 
 
@@ -42,21 +43,21 @@ class UserInDB(User):
     hashed_password: str
 
 
-def get_user(db, username: str):
+def get_user(db, username: str) -> Union[None, User]:
     if username in db:
-        user_dict = db[username]
+        user_dict: Dict[str, Union[str, bool]] = db[username]
         return UserInDB(**user_dict)
 
 
-def fake_decode_token(token):
+def fake_decode_token(token: str) -> User:
     # This doesn't provide any security at all
     # Check the next version
-    user = get_user(fake_users_db, token)
+    user: User = get_user(fake_users_db, token)
     return user
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    user = fake_decode_token(token)
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    user: User = fake_decode_token(token)
 
     if not user:
         raise HTTPException(
@@ -80,13 +81,13 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 
 @app.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user_dict = fake_users_db.get(form_data.username)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
+    user_dict: Dict[str, Union[str, bool]] = fake_users_db.get(form_data.username)
     print(user_dict)
     if not user_dict:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    user = UserInDB(**user_dict)
-    hashed_password = fake_hash_password(form_data.password)
+    user: User = UserInDB(**user_dict)
+    hashed_password: str = fake_hash_password(form_data.password)
     if not hashed_password == user.hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
@@ -94,5 +95,5 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @app.get("/users/me", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_active_user)):
+async def read_users_me(current_user: User = Depends(get_current_active_user)) -> User:
     return current_user

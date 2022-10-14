@@ -7,18 +7,19 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 import crud, models, schemas
+from schemas import User
 from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY: str = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM: str = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
 
 # Dependency
-def get_db():
+def get_db() -> None:
     db = SessionLocal()
     try:
         yield db
@@ -114,11 +115,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 
 
 @app.get("/users/me/", response_model=schemas.User)
-async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
+async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)) -> User:
     return current_user
 
 
 @app.post("/users/create", response_model=schemas.User)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)) -> User:
     user.password = get_password_hash(user.password)
     return crud.create_user(db, user)
